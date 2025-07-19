@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"expvar"
 	"flag"
 	"log/slog"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -67,8 +69,8 @@ func main() {
 
 	flag.StringVar(&cfg.smtp.host, "smtp-host", "sandbox.smtp.mailtrap.io", "SMTP host")
 	flag.IntVar(&cfg.smtp.port, "smtp-port", 2525, "SMTP port")
-	flag.StringVar(&cfg.smtp.username, "smtp-username", "01a33bd0cced2a", "SMTP username")
-	flag.StringVar(&cfg.smtp.password, "smtp-password", "192552a6f1da0d", "SMTP password")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", "2d48a23be9ac95", "SMTP username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", "2c26dcb06501a2", "SMTP password")
 	flag.StringVar(&cfg.smtp.sender, "smtp-sendeer", "Greenlight <no-reply@matiasalvarez.net>", "SMTP sender")
 
 	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)", func(val string) error {
@@ -89,6 +91,20 @@ func main() {
 	defer db.Close()
 
 	logger.Info("database connection pool established")
+
+	expvar.NewString("version").Set(version)
+
+	expvar.Publish("goroutines", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
+
+	expvar.Publish("database", expvar.Func(func() any {
+		return db.Stats()
+	}))
+
+	expvar.Publish("timestamp", expvar.Func(func() any {
+		return time.Now().Unix()
+	}))
 
 	app := &application{
 		config: cfg,
